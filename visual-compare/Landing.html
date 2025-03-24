@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Comparison Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    .form-section {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input[type="file"] {
+      margin-bottom: 15px;
+    }
+    #result {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Visual Compare Test</h1>
+
+  <form id="compareForm">
+    <div class="form-section">
+      <label for="baseline">Baseline Image:</label>
+      <input type="file" id="baseline" name="baseline" accept="image/*" required />
+    </div>
+
+    <div class="form-section">
+      <label for="test">Test Image:</label>
+      <input type="file" id="test" name="test" accept="image/*" required />
+    </div>
+
+    <button type="submit">Compare</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    document.getElementById("compareForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const baseline = document.getElementById("baseline").files[0];
+      const test = document.getElementById("test").files[0];
+      if (!baseline || !test) return alert("Please select both images.");
+
+      const formData = new FormData();
+      formData.append("component_name", "ManualTest");
+      formData.append("baseline_version", "v1.0");
+      formData.append("tag", "manual_ui");
+      formData.append("tolerance", 0.05);
+      formData.append("ai_ignore_dynamic_content", true);
+      formData.append("ignore_regions", "[]");
+      formData.append("test_image", test);
+
+      const baselineUploadForm = new FormData();
+      baselineUploadForm.append("component_name", "ManualTest");
+      baselineUploadForm.append("version", "v1.0");
+      baselineUploadForm.append("tag", "manual_ui");
+      baselineUploadForm.append("image", baseline);
+
+      try {
+        // Upload baseline first
+        await fetch("http://localhost:8000/baseline", {
+          method: "POST",
+          body: baselineUploadForm
+        });
+
+        // Then compare
+        const response = await fetch("http://localhost:8000/compare", {
+          method: "POST",
+          body: formData
+        });
+
+        const result = await response.json();
+        document.getElementById("result").innerHTML = `
+          <h3>Result: ${result.status}</h3>
+          <p>Diff Score: ${result.diff_score}</p>
+          <p><a href="http://localhost:8000${result.report_url}" target="_blank">View Report</a></p>
+        `;
+      } catch (err) {
+        console.error(err);
+        alert("Comparison failed. See console for details.");
+      }
+    });
+  </script>
+</body>
+</html>
